@@ -1,2 +1,5 @@
 ./practice/*
-env
+env 
+venv
+charactyer
+characters.json
