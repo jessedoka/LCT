@@ -1,5 +1,5 @@
 # goal: scrape text data from google scholars
-
+import random
 import spacy
 import argparse
 # Load the spaCy model
@@ -25,10 +25,10 @@ characters = {
 
 # Identify and track the character
 for entity in doc.ents:
+    print(entity.text, entity.label_)
     # entity need to appear more than 5 times to be classed a character
     if entity.label_ == "PERSON" and text.count(entity.text) > 5:
         # add list of characters as an object
-        # [ {name: "name", count: 5, context: ["", ""]}, {name: "name", count: 5, context: ["", ""]}]
         if entity.text not in characters:
             characters[entity.text] = {
                 "count": text.count(entity.text),
@@ -40,9 +40,7 @@ for entity in doc.ents:
 # output into a json file
 import json
 
-with open("characters.json", "w") as file:
+with open("characters_track.json", "w") as file:
     json.dump(characters, file, indent=4)
 
 print("Characters extracted and saved to characters.json")
-print("You can now run the next script to extract the relationships between the characters")
-print("python relationships.py characters.json")
