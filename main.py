@@ -10,37 +10,39 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument('text', help='text to be processed')
 
 args = argparser.parse_args()
-
 fileloc = args.text
 
-# Read the file
-with open(fileloc, "r") as file:
-    text = file.read()
+def character_tracker(file: str, doc=None) -> dict:
+    """
+    file: str
+    doc: spacy doc object
+    returns a dictionary of characters, with their associated count and context.
+    
+    This is function that takes a spacy doc object or a file if the doc is not entered 
+    and returns a dictionary of characters, with their associated count and context. 
+    """
 
-# Process the text
-doc = nlp(text)
+    if doc is None:
+        with open(file, "r") as f:
+            text = f.read()
+            doc = nlp(text)
+    
+    characters = {}
 
-characters = {
-}
+    for entity in doc.ents:
+        # print(entity.text, entity.label_)
+        # entity need to appear more than 5 times to be classed a character
+        if entity.label_ == "PERSON" and text.count(entity.text) > 5:
+            # add list of characters as an object
+            if entity.text not in characters:
+                characters[entity.text] = {
+                    "count": text.count(entity.text),
+                    "context": [entity.sent.text]
+                }
+            else:
+                characters[entity.text]["context"].append(entity.sent.text)
 
-# Identify and track the character
-for entity in doc.ents:
-    print(entity.text, entity.label_)
-    # entity need to appear more than 5 times to be classed a character
-    if entity.label_ == "PERSON" and text.count(entity.text) > 5:
-        # add list of characters as an object
-        if entity.text not in characters:
-            characters[entity.text] = {
-                "count": text.count(entity.text),
-                "context": [entity.sent.text]
-            }
-        else:
-            characters[entity.text]["context"].append(entity.sent.text)
+    return characters
 
-# output into a json file
-import json
+print(character_tracker(fileloc))
 
-with open("characters_track.json", "w") as file:
-    json.dump(characters, file, indent=4)
-
-print("Characters extracted and saved to characters.json")

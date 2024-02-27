@@ -31,3 +31,4 @@ typing_extensions==4.9.0
 urllib3==2.2.1
 wasabi==1.1.2
 weasel==0.3.4
+seaborn
