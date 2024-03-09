@@ -1,48 +1,78 @@
-# goal: scrape text data from google scholars
-import random
+# building a lexicon of positive and negative words
+
 import spacy
-import argparse
+from spacy_wordnet.wordnet_annotator import WordnetAnnotator
+import json
+import pandas as pd
+from typing import List, Tuple
+
 # Load the spaCy model
 nlp = spacy.load("en_core_web_sm")
+nlp.add_pipe("spacy_wordnet", after='tagger')
 
-# # Sample text
-argparser = argparse.ArgumentParser()
-argparser.add_argument('text', help='text to be processed')
+# seed attributes
+# https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html
 
-args = argparser.parse_args()
-fileloc = args.text
+personality_traits = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
+emotional_states = ["anger", "fear", "joy", "sadness", "surprise"]
+interpersonal_skills = ["empathy", "assertiveness", "conflict", "leadership", "teamwork"]
 
-def character_tracker(file: str, doc=None) -> dict:
-    """
-    file: str
-    doc: spacy doc object
-    returns a dictionary of characters, with their associated count and context.
+seed_lexicon = {
+    "PersonalityTraits": personality_traits,
+    "EmotionalStates": emotional_states,
+    "InterpersonalSkills": interpersonal_skills
+}
+
+review = 'data/reviews.pkl' 
+
+# use wordnet to create seed lexicon
+
+seed_emotions_lexicon = {}
+
+def init_lexicon():
+    for key in seed_lexicon:
+        seed_emotions_lexicon[key] = {}
+        for word in seed_lexicon[key]:
+            seed_emotions_lexicon[key][word] = {"synonyms": [], "antonyms": []}
+
+def get_synonyms_antonyms(word) -> Tuple[List[str], List[str]]:
+    synonyms = []
+    antonyms = []
+    for syn in word._.wordnet.synsets():
+        for lemma in syn.lemmas():
+            synonyms.append(lemma.name())
+            if lemma.antonyms():
+                antonyms.append(lemma.antonyms()[0].name())
+    return synonyms, antonyms
+
+def get_definitions(word):
+    definitions = []
+    for syn in word._.wordnet.synsets():
+        definitions.append(syn.definition())
+    return definitions
+
+def polarity_score(word):
+    # get the polarity score of the word
+    pass
+
+
+
+def create_lexicon():
+    for key in seed_lexicon:
+        for word in seed_lexicon[key]:
+            synonyms, antonyms = get_synonyms_antonyms(nlp(word)[0])
+            seed_emotions_lexicon[key][word]["synonyms"] = synonyms
+            seed_emotions_lexicon[key][word]["antonyms"] = antonyms
+            seed_emotions_lexicon[key][word]["definitions"] = get_definitions(nlp(word)[0])
+
+def main():
+    init_lexicon()
+    create_lexicon()
+    with open('data/seed_emotions_lexicon.json', 'w') as f:
+        json.dump(seed_emotions_lexicon, f)
+    print(seed_emotions_lexicon)
+
+if __name__ == "__main__":
+    main()
     
-    This is function that takes a spacy doc object or a file if the doc is not entered 
-    and returns a dictionary of characters, with their associated count and context. 
-    """
-
-    if doc is None:
-        with open(file, "r") as f:
-            text = f.read()
-            doc = nlp(text)
-    
-    characters = {}
-
-    for entity in doc.ents:
-        # print(entity.text, entity.label_)
-        # entity need to appear more than 5 times to be classed a character
-        if entity.label_ == "PERSON" and text.count(entity.text) > 5:
-            # add list of characters as an object
-            if entity.text not in characters:
-                characters[entity.text] = {
-                    "count": text.count(entity.text),
-                    "context": [entity.sent.text]
-                }
-            else:
-                characters[entity.text]["context"].append(entity.sent.text)
-
-    return characters
-
-print(character_tracker(fileloc))
-
+                                                                                                               
