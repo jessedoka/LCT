@@ -43,6 +43,8 @@ class LexiconBuilder:
         for syn in word._.wordnet.synsets():
             definitions.append(syn.definition())
         return definitions
+    
+
 
     def polarity_score(self, word):
         # get the polarity score of the word
@@ -51,10 +53,14 @@ class LexiconBuilder:
     def create_lexicon(self):
         for key in self.seed_lexicon:
             for word in self.seed_lexicon[key]:
+                
                 synonyms, antonyms = self.get_synonyms_antonyms(self.nlp(word)[0])
                 self.seed_hla_lexicon[key][word]["synonyms"] = synonyms
                 self.seed_hla_lexicon[key][word]["antonyms"] = antonyms
                 self.seed_hla_lexicon[key][word]["definitions"] = self.get_definitions(self.nlp(word)[0])
+
+                # check domains of the word
+                self.seed_hla_lexicon[key][word]["domains"] = self.nlp(word)[0]._.wordnet.wordnet_domains()
 
     def save_lexicon(self):
         with open('data/seed_hla_lexicon.json', 'w') as f:
@@ -69,5 +75,6 @@ if __name__ == "__main__":
     lexicon_builder.create_lexicon()
     lexicon_builder.save_lexicon()
     lexicon_builder.print_lexicon()
+
 
     # https://ryanong.co.uk/2020/08/01/day-214-learn-nlp-with-me-slp-textbook-lexicons-for-sentiment-affect-and-connotation-ii/
