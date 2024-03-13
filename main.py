@@ -1,13 +1,11 @@
-import spacy
-from spacy_wordnet.wordnet_annotator import WordnetAnnotator
+import nltk
+from nltk.corpus import wordnet
 import json
-import pandas as pd
 from typing import List, Tuple
 
 class LexiconBuilder:
     def __init__(self, review):
-        self.nlp = spacy.load("en_core_web_sm")
-        self.nlp.add_pipe("spacy_wordnet", after='tagger')
+        nltk.download('wordnet')
 
         self.personality_traits = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
         self.emotional_states = ["anger", "fear", "joy", "sadness", "surprise"]
@@ -31,7 +29,7 @@ class LexiconBuilder:
     def get_synonyms_antonyms(self, word) -> Tuple[List[str], List[str]]:
         synonyms = []
         antonyms = []
-        for syn in word._.wordnet.synsets():
+        for syn in wordnet.synsets(word):
             for lemma in syn.lemmas():
                 synonyms.append(lemma.name())
                 if lemma.antonyms():
@@ -40,12 +38,10 @@ class LexiconBuilder:
 
     def get_definitions(self, word):
         definitions = []
-        for syn in word._.wordnet.synsets():
+        for syn in wordnet.synsets(word):
             definitions.append(syn.definition())
         return definitions
     
-
-
     def polarity_score(self, word):
         # get the polarity score of the word
         pass
@@ -54,14 +50,12 @@ class LexiconBuilder:
         for key in self.seed_lexicon:
             for word in self.seed_lexicon[key]:
                 
-                synonyms, antonyms = self.get_synonyms_antonyms(self.nlp(word)[0])
+                synonyms, antonyms = self.get_synonyms_antonyms(word)
                 self.seed_hla_lexicon[key][word]["synonyms"] = synonyms
                 self.seed_hla_lexicon[key][word]["antonyms"] = antonyms
-                self.seed_hla_lexicon[key][word]["definitions"] = self.get_definitions(self.nlp(word)[0])
-
-                # check domains of the word
-                self.seed_hla_lexicon[key][word]["domains"] = self.nlp(word)[0]._.wordnet.wordnet_domains()
-
+                self.seed_hla_lexicon[key][word]["definitions"] = self.get_definitions(word)
+    
+    
     def save_lexicon(self):
         with open('data/seed_hla_lexicon.json', 'w') as f:
             json.dump(self.seed_hla_lexicon, f)
@@ -75,6 +69,3 @@ if __name__ == "__main__":
     lexicon_builder.create_lexicon()
     lexicon_builder.save_lexicon()
     lexicon_builder.print_lexicon()
-
-
-    # https://ryanong.co.uk/2020/08/01/day-214-learn-nlp-with-me-slp-textbook-lexicons-for-sentiment-affect-and-connotation-ii/
