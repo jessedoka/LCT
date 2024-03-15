@@ -21,8 +21,8 @@ def initialize_lexicon():
 
 def extract_sentiment_terms(sentence):
     # Tokenize words and tag part of speech
-    stop_words = set(stopwords.words('english'))
     words = word_tokenize(sentence)
+    stop_words = set(stopwords.words('english'))
     tagged_words = pos_tag(words)
     sentiment_terms = set()
 
@@ -34,6 +34,15 @@ def extract_sentiment_terms(sentence):
 
     return sentiment_terms
 
+# wordnet expansion 
+
+def get_synonyms(word):
+    synonyms = set()
+    for syn in wordnet.synsets(word):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name())
+    return synonyms
+
 
 def preprocess_corpus(corpus):
     # Implement preprocessing steps here
@@ -43,24 +52,21 @@ def preprocess_corpus(corpus):
     df = pd.read_csv(corpus)
     processed_corpus = df['review_text'].tolist()
     
-    # tokenization
-    processed_corpus = [nltk.word_tokenize(review) for review in processed_corpus]
+    # get sentences from each review
+    sentences = []
+    for review in processed_corpus:
+        sentences.extend(nltk.sent_tokenize(review))
 
-    # remove stop words
-    stop_words = set(nltk.corpus.stopwords.words('english'))
+    # Extract sentiment terms from each sentence
+    sentiment_terms = set()
+    for sentence in sentences:
+        sentiment_terms.update(extract_sentiment_terms(sentence))
 
-    for i in range(len(processed_corpus)):
-        processed_corpus[i] = [word for word in processed_corpus[i] if word not in stop_words]
+    # Add the sentiment terms to the processed corpus
+    processed_corpus.append(list(sentiment_terms))
 
-    # stemming
-    stemmer = nltk.stem.PorterStemmer()
-
-    for i in range(len(processed_corpus)):
-        processed_corpus[i] = [stemmer.stem(word) for word in processed_corpus[i]]
-
-    # # extract sentiment terms
-    # for i in range(len(processed_corpus)):
-    #     processed_corpus[i] = list(extract_sentiment_terms(' '.join(processed_corpus[i])))
+    with open("output/sentiment_terms.txt", "w") as f:
+        f.write(' '.join(sentiment_terms))
 
     return processed_corpus
 
@@ -73,6 +79,11 @@ def learn_word_embeddings(processed_corpus):
 
 
 def expand_seeds(seeds, model, Tc):
+    # TODO: Implement the expansion of seeds using wordnet 
+
+    # if model cannot find word in seed then use wordnet to find synonyms 
+    
+
     C = set()
     for Si in seeds:
         for Wj in model.wv.index_to_key:
@@ -93,19 +104,18 @@ def build_semantic_graph(C, model):
 
 
 def label_propagation(G, seeds, max_iterations=100):
-
     # Initialize labels based on seeds
     labels = {node: 0 for node in G.nodes()}  # Default label
-    for seed in seeds:
-        labels[seed] = 1  # Assuming 1 for depressive, -1 for non-depressive
+    for seed, label in seeds.items():
+        labels[seed] = label  # label for each seed
 
     for _ in range(max_iterations):
         prev_labels = labels.copy()
         for node in G.nodes():
             if node not in seeds:  # Don't update seed labels
                 # Update label based on the weighted average of neighbor labels
-                labels[node] = int(np.mean([labels[neighbor] for neighbor in G.neighbors(node)]))
-                # print(labels[node])
+                labels[node] = int(np.mean([labels[neighbor]
+                                   for neighbor in G.neighbors(node)]))
 
         # Check for convergence
         if prev_labels == labels:
@@ -140,7 +150,7 @@ def main(corpus, seeds, Tc):
 # Example usage
 corpus = 'data/reviews.csv' 
 # big five personality traits
-seeds = ["disappointed", "sad", "happy", "pleased"]
+seeds = {"anger": -1, "fear": -1, "joy": 1, "sadness": -1, "surprise": 1}
 
 Tc = 0.5  # Threshold for similarity
 L, Ld, Ln, G, C = main(corpus, seeds, Tc)
