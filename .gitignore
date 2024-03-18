@@ -6,3 +6,4 @@ data/*
 !data/sample.csv
 texts/*
 output/*
+bin.txt
