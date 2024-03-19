@@ -2,6 +2,7 @@ import numpy as np
 from gensim.models import Word2Vec
 import networkx as nx
 import pandas as pd
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
 
@@ -13,6 +14,12 @@ from nltk import pos_tag
 
 from nltk.corpus import wordnet
 import string
+
+nltk.download('opinion_lexicon')
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
 
 def initialize_lexicon():
     C, Ld, Ln = set(), set(), set()
@@ -29,9 +36,9 @@ def extract_sentiment_terms(sentence):
     for word, tag in tagged_words:
         if word.lower() not in stop_words and word not in string.punctuation:
             if tag.startswith('JJ') or tag.startswith('RB'):
-                if word.lower() in opinion_lexicon.positive() or word.lower() in opinion_lexicon.negative():
+                if word.lower() in opinion_lexicon.negative() or word.lower() in opinion_lexicon.positive():
                     sentiment_terms.add(word)
-
+            
     return sentiment_terms
 
 def get_synonyms(word):
@@ -55,23 +62,25 @@ def preprocess_corpus(corpus):
     for review in reviews:
         sentences.extend(nltk.sent_tokenize(review))
 
-    # Extract sentiment terms from each sentence
+    
+    processed_corpus = [word_tokenize(sentence) for sentence in sentences]
+
+    # Extract sentiment terms from the corpus
     sentiment_terms = set()
     for sentence in sentences:
         sentiment_terms.update(extract_sentiment_terms(sentence))
 
-    # Add the sentiment terms to the processed corpus
-    processed_corpus = [word_tokenize(term) for term in sentiment_terms]
+    print(f"sentiment_terms: {sentiment_terms} -> {len(sentiment_terms)} words")
 
-    return processed_corpus
+    # flat_corpus = [word for sublist in processed_corpus for word in sublist]
+
+    return processed_corpus, sentiment_terms
 
 
 def learn_word_embeddings(processed_corpus):
     # Train a Word2Vec model on the processed corpus
     model = Word2Vec(sentences=processed_corpus,
                      vector_size=100, window=5, min_count=1, workers=4)
-    
-    print(model.wv.similarity('cry', 'good'))
     return model
 
 
@@ -81,7 +90,7 @@ def expand_seeds(seeds, model, Tc):
     # if model cannot find word in seed then use wordnet to find synonyms 
 
     # Pre-compute a dictionary of similarities 
-    similarities = {seed: {} for seed in seeds}
+    similarities = defaultdict(dict)
     for word in model.wv.index_to_key:
         for seed in seeds:
             if seed in model.wv.index_to_key:
@@ -93,13 +102,16 @@ def expand_seeds(seeds, model, Tc):
                         similarities[synonym][word] = model.wv.similarity(synonym, word)
                 else:
                     similarities[seed][word] = 0
-    print(similarities)
+    print(f"similarities: {similarities}")
+
     C = set()
     for seed, similar_words in similarities.items():
+        print(f"seed: {seed}")
         for word, similarity in similar_words.items():
             if similarity >= Tc:
+                print(f"word: {word} similarity: {similarity}")
                 C.add((seed, word))     
-                     
+    print(f"C: {C} -> {len(C)} pairs")
     return C, seeds
 
 
@@ -123,9 +135,10 @@ def label_propagation(G, seeds, max_iterations=100):
     for _ in range(max_iterations):
         prev_labels = labels.copy()
         for node in G.nodes():
-            if node not in seeds:  # Don't update seed labels
+            if node not in seeds: 
+                # Don't update seed labels
+
                 # Update label based on the weighted average of neighbor labels
-                # print neighbors
                 labels[node] = int(np.mean([labels[neighbor]
                                    for neighbor in G.neighbors(node)]))
 
@@ -137,51 +150,48 @@ def label_propagation(G, seeds, max_iterations=100):
     return labels
 
 
-def build_lexicon(labels):
+def build_lexicon(labels, sentiment_terms):
     Ld, Ln = set(), set()
     for word, label in labels.items():
-        if label < 0 and abs(label) > 0.5:
-            Ld.add(word)
-        elif label > 0 and abs(label) > 0.5:
-            Ln.add(word)
+        if word in sentiment_terms:
+            if label < 0 and abs(label) > 0.5:
+                Ld.add(word)
+            elif label > 0 and abs(label) > 0.5:
+                Ln.add(word)
     return Ld, Ln
 
 
 def main(corpus, seeds, Tc):
     C, Ld, Ln = initialize_lexicon()
-    processed_corpus = preprocess_corpus(corpus)
+    processed_corpus, sentiment_terms = preprocess_corpus(corpus)
     model = learn_word_embeddings(processed_corpus)
-    # C, seeds = expand_seeds(seeds, model, Tc)
+    C, seeds = expand_seeds(seeds, model, Tc)
 
-    # G = build_semantic_graph(C, model)
+    G = build_semantic_graph(C, model)
 
-    # labels = label_propagation(G, seeds)
-    # Ld, Ln = build_lexicon(labels)
-    # L = Ld.union(Ln)
-    # return L, Ld, Ln, G, C
-    return None, None, None, None, None
+    labels = label_propagation(G, seeds)
+    Ld, Ln = build_lexicon(labels, sentiment_terms)
+    L = Ld.union(Ln)
+    return L, Ld, Ln, G, C
+    # return None, None, None, None, None
 
 
 # Example usage
-corpus = 'data/tinysample.csv' 
-# big five personality traits
-seeds = {"anger": -1, "fear": -1, "joy": 1, "sadness": -1, "surprise": 1}
+corpus = 'data/sample.csv' 
+
+# Seeds for different emotions
+seeds = {"anger": -1, "fear": -1, "joy": 1, "sadness": -1, "surprise": 1, "disgust": -1, "trust": 1, "anticipation": 1}
 
 Tc = 0.5  # Threshold for similarity
 L, Ld, Ln, G, C = main(corpus, seeds, Tc)
 
-# with open('output/lexicon.txt', 'w') as f:
-#     f.write(' '.join(L))
+def write_to_file(filename, data):
+    with open(filename, 'w') as f:
+        f.write(' '.join(data) if isinstance(data, list) else str(data))
 
-# with open('output/depressive_lexicon.txt', 'w') as f:
-#     f.write(' '.join(Ld))
-
-# with open('output/non_depressive_lexicon.txt', 'w') as f:
-#     f.write(' '.join(Ln))
-
-# with open('output/graph.txt', 'w') as f: 
-#     f.write(str(G.edges()))
-
-# with open('output/candidate.txt', 'w') as f: 
-#     f.write(str(C))
+write_to_file('output/lexicon.txt', L)
+write_to_file('output/depressive_lexicon.txt', Ld)
+write_to_file('output/non_depressive_lexicon.txt', Ln)
+write_to_file('output/graph.txt', G.edges())
+write_to_file('output/candidate.txt', C)
 
