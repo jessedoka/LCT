@@ -4,13 +4,16 @@ import networkx as nx
 import pandas as pd
 from collections import defaultdict
 
+import matplotlib.pyplot as plt
+
 import nltk
 from nltk.corpus import opinion_lexicon
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk import pos_tag
 
-from nltk.corpus import wordnet
+from nltk.corpus import sentiwordnet as swn
+
 import string
 from tqdm import tqdm
 
@@ -18,7 +21,7 @@ nltk.download('opinion_lexicon')
 nltk.download('stopwords')
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
-nltk.download('wordnet')
+nltk.download('sentiwordnet')
 
 
 def extract_sentiment_terms(sentence):
@@ -39,8 +42,8 @@ def extract_sentiment_terms(sentence):
 def get_synonyms(word):
     synonyms = set()
 
-    for syn in wordnet.synsets(word):
-        for lemma in syn.lemmas():
+    for syn in swn.senti_synsets(word):
+        for lemma in syn.synset.lemmas():
             synonyms.add(lemma.name())
     return synonyms
 
@@ -61,15 +64,17 @@ def preprocess_corpus(corpus):
     for review in tqdm(reviews):
         sentences.extend(nltk.sent_tokenize(review))
 
+    print("extracting sentiment terms -> sentiment terms")
+
+    sentiment_terms = set()
+    for sentence in tqdm(sentences):
+        sentiment_terms.update(extract_sentiment_terms(sentence))
 
     print("tokenising words")
     processed_corpus = [word_tokenize(sentence) for sentence in tqdm(sentences)]
 
     # Extract sentiment terms from the corpus
-    print("extracting sentiment terms -> sentiment terms")
-    sentiment_terms = set()
-    for sentence in tqdm(sentences):
-        sentiment_terms.update(extract_sentiment_terms(sentence))
+    
 
     return processed_corpus, sentiment_terms
 
@@ -81,7 +86,7 @@ def learn_word_embeddings(processed_corpus):
     return model
 
 
-def expand_seeds(seeds, model, Tc):
+def expand_seeds(seeds, model, Tc, sentiment_terms):
     # TODO: Implement the expansion of seeds using wordnet 
 
     # if model cannot find word in seed then use wordnet to find synonyms 
@@ -91,7 +96,7 @@ def expand_seeds(seeds, model, Tc):
     similarities = defaultdict(dict)
     for word in tqdm(model.wv.index_to_key):
         for seed in seeds:
-            if seed in model.wv.index_to_key:
+            if seed in model.wv.index_to_key and word in sentiment_terms:
                 similarities[seed][word] = model.wv.similarity(seed, word)
             else:
                 synonyms = get_synonyms(seed)
@@ -141,11 +146,11 @@ def label_propagation(G, seeds, max_iterations=100):
     return labels
 
 
-def build_lexicon(labels, sentiment_terms):
+def build_lexicon(labels):
     lexicon = defaultdict(set)
     print("building lexicon")
     for word, label in tqdm(labels.items()):
-        if word in sentiment_terms and label is not None:
+        if label is not None:
             lexicon[label].add(word)
     return lexicon
 
@@ -153,21 +158,23 @@ def build_lexicon(labels, sentiment_terms):
 def main(corpus, seeds, Tc):
     processed_corpus, sentiment_terms = preprocess_corpus(corpus)
     model = learn_word_embeddings(processed_corpus)
-    C, seeds = expand_seeds(seeds, model, Tc)
+    C, seeds = expand_seeds(seeds, model, Tc, sentiment_terms)
 
     G = build_semantic_graph(C, model)
 
     labels = label_propagation(G, seeds)
-    lexicon = build_lexicon(labels, sentiment_terms)
+    lexicon = build_lexicon(labels)
     return lexicon, G, C
-    # return None, None, None, None, None
 
 
 # Example usage
 corpus = 'data/sample.csv'
 
-# Seeds for different emotions
-seeds = {"anger", "fear", "joy", "sadness", "surprise", "disgust"}
+# OCEAN personality traits
+seeds = ['open', 'conscientious', 'extravert', 'agreeable', 'neurotic']
+
+# seed words associated with each personality trait
+# seeds = { 'open': ['creative', 'curious', 'imaginative', 'insightful', 'original', 'resourceful', 'versatile'],
 
 Tc = 0.5  # Threshold for similarity
 lexicon, G, C = main(corpus, seeds, Tc)
@@ -184,5 +191,6 @@ def write_to_file(filename, data):
 
 write_to_file('output/lexicon.txt', lexicon)
 write_to_file('output/graph.txt', G.edges())
+
 write_to_file('output/candidate.txt', C)
 
