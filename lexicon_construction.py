@@ -1,3 +1,4 @@
+from os import write
 import numpy as np
 from gensim.models import Word2Vec
 import networkx as nx
@@ -15,6 +16,7 @@ from nltk import pos_tag
 from nltk.corpus import sentiwordnet as swn
 
 import string
+import json
 from tqdm import tqdm
 
 nltk.download('opinion_lexicon')
@@ -48,21 +50,20 @@ def get_synonyms(word):
     return synonyms
 
 
-def preprocess_corpus(corpus):
+def preprocess_corpus(corpus, text_column):
     # Implement preprocessing steps here
-    # This might include tokenization, removing stop words, stemming, etc.
 
-    # read the csv file only return the review_text
     print("reading corpus...")
     df = pd.read_csv(corpus, chunksize=1000)
-    reviews = [review for chunk in df for review in chunk['review_text'] if review != 'nan' and review != ' ' and type(review) == str]
-    
+    samples = [sample for chunk in df for sample in chunk[text_column] if isinstance(sample, str) and len(sample) > 0]
     
     # get sentences from each review
     print("tokenising sentences...")
-    sentences = []
-    for review in tqdm(reviews):
-        sentences.extend(nltk.sent_tokenize(review))
+    sentences = [sentence.lower() for sentence in samples]
+
+    # stop words and numbers
+    stop_words = set(stopwords.words('english'))
+    sentences = [' '.join([word for word in word_tokenize(sentence) if word not in stop_words and not word.isdigit()]) for sentence in tqdm(sentences)]
 
     print("extracting sentiment terms -> sentiment terms")
 
@@ -87,11 +88,7 @@ def learn_word_embeddings(processed_corpus):
 
 
 def expand_seeds(seeds, model, Tc, sentiment_terms):
-    # TODO: Implement the expansion of seeds using wordnet 
 
-    # if model cannot find word in seed then use wordnet to find synonyms 
-
-    # Pre-compute a dictionary of similarities 
     print("expanding seeds")
     similarities = defaultdict(dict)
     for word in tqdm(model.wv.index_to_key):
@@ -125,18 +122,14 @@ def build_semantic_graph(C, model):
 
 def label_propagation(G, seeds, max_iterations=100):
     # Initialize labels based on seeds
-    labels = {node: None for node in G.nodes()}  # Default label
-    print("label propagation")
-    for seed in seeds:
-        labels[seed] = seed  # label for each seed
-    
-    for _ in tqdm(range(max_iterations)):
+    labels = {node: "objective" for node in G.nodes()}  # Default label
+    for seed, label in seeds.items():
+        labels[seed] = label  # label for each seed
+
+    for _ in range(max_iterations):
         prev_labels = labels.copy()
         for node in G.nodes():
-            if node not in seeds: 
-                # Don't update seed labels
-
-                # Update label based on the most common label of neighbor nodes
+            if node not in seeds:  # Don't update seed labels
                 neighbor_labels = [labels[neighbor] for neighbor in G.neighbors(node)]
                 labels[node] = max(set(neighbor_labels), key=neighbor_labels.count)
 
@@ -144,6 +137,7 @@ def label_propagation(G, seeds, max_iterations=100):
         if prev_labels == labels:
             break
     return labels
+        
 
 
 def build_lexicon(labels):
@@ -156,7 +150,7 @@ def build_lexicon(labels):
 
 
 def main(corpus, seeds, Tc):
-    processed_corpus, sentiment_terms = preprocess_corpus(corpus)
+    processed_corpus, sentiment_terms = preprocess_corpus(corpus, 'review_text')
     model = learn_word_embeddings(processed_corpus)
     C, seeds = expand_seeds(seeds, model, Tc, sentiment_terms)
 
@@ -171,10 +165,11 @@ def main(corpus, seeds, Tc):
 corpus = 'data/sample.csv'
 
 # OCEAN personality traits
-seeds = ['open', 'conscientious', 'extravert', 'agreeable', 'neurotic']
+seeds = pd.read_csv('data/seeds.csv')
 
-# seed words associated with each personality trait
-# seeds = { 'open': ['creative', 'curious', 'imaginative', 'insightful', 'original', 'resourceful', 'versatile'],
+# seeds = {word: trait for trait in seeds.columns for word in seeds[trait].dropna().tolist()}
+
+seeds = {'creative': 1, 'sad': -1, 'happy': 1, 'angry': -1, 'calm': 1, 'anxious': -1, 'energetic': 1, 'lazy': -1}
 
 Tc = 0.5  # Threshold for similarity
 lexicon, G, C = main(corpus, seeds, Tc)
@@ -188,6 +183,8 @@ def write_to_file(filename, data):
         else:
             f.write(' '.join(data) if isinstance(data, list) else str(data))
 
+lexicon = {key: list(value) for key, value in lexicon.items()}
+write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
 
 write_to_file('output/lexicon.txt', lexicon)
 write_to_file('output/graph.txt', G.edges())

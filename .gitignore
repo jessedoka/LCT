@@ -2,8 +2,10 @@
 env 
 venv
 
-data/*
-!data/sample.csv
 texts/*
 output/*
 bin.txt
+
+notes/*
+
+*.pyc
