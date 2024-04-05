@@ -1,0 +1,135 @@
+{
+    "Personality Traits": {
+        "Openness": [
+            "..."
+        ],
+        "Conscientiousness": [
+            "..."
+        ],
+        "Extraversion": [
+            "..."
+        ],
+        "Agreeableness": [
+            "..."
+        ],
+        "Neuroticism": [
+            "..."
+        ]
+    },
+    "Psychological Processes": [
+        {
+            "Social Processes": {
+                "values": [
+                    "..."
+                ],
+                "Friends": [
+                    "..."
+                ],
+                "Family": [
+                    "..."
+                ],
+                "Humans": [
+                    "..."
+                ]
+            }
+        }, 
+        {
+            "Affective Processes": {
+                "values": [
+                    "..."
+                ],
+                "Positive Emotions": [
+                    "..."
+                ],
+                "Negative Emotions": [
+                    "..."
+                ],
+                "Anxiety": [
+                    "..."
+                ],
+                "Anger": [
+                    "..."
+                ],
+                "Sadness": [
+                    "..."
+                ]
+            }
+        },
+        {
+            "Cognitive Processes": {
+                "values": [
+                    "..."
+                ],
+                "Insight": [
+                    "..."
+                ],
+                "Causation": [
+                    "..."
+                ],
+                "Discrepancy": [
+                    "..."
+                ],
+                "Tentative": [
+                    "..."
+                ],
+                "Certainty": [
+                    "..."
+                ],
+                "Inhibition": [
+                    "..."
+                ],
+                "Inclusive": [
+                    "..."
+                ],
+                "Exclusive": [
+                    "..."
+                ]
+            }
+        },
+        {
+            "Perceptual Processes": {
+                "values": [
+                    "..."
+                ],
+                "Seeing": [
+                    "..."
+                ],
+                "Hearing": [
+                    "..."
+                ],
+                "Feeling": [
+                    "..."
+                ]
+            }
+        },
+        {
+            "Biological Processes": {
+                "values": [
+                    "..."
+                ],
+                "Body": [
+                    "..."
+                ],
+                "Sexuality": [
+                    "..."
+                ]
+            }
+        },
+        {
+            "Relativity": {
+                "values": [
+                    "..."
+                ],
+                "Motion": [
+                    "..."
+                ],
+                "Space": [
+                    "..."
+                ],
+                "Time": [
+                    "..."
+                ]
+            }
+        }  
+    ]
+}
