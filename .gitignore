@@ -2,8 +2,11 @@
 env 
 venv
 
+
+data/*
 texts/*
 output/*
+models/*
 bin.txt
 
 notes/*
