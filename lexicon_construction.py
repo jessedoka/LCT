@@ -1,4 +1,5 @@
 from gensim.models import Word2Vec
+from gensim import downloader as api
 import networkx as nx
 import pandas as pd
 from collections import defaultdict
@@ -11,8 +12,6 @@ from tqdm import tqdm
 from preprocessing import preprocess_corpus, preprocess_text, write_to_file
 
 import joblib
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
 
 nltk.download('opinion_lexicon')
 nltk.download('stopwords')
@@ -30,8 +29,10 @@ def get_synonyms(word):
 
 def learn_word_embeddings(processed_corpus):
     # Train a Word2Vec model on the processed corpus
-    model = Word2Vec(sentences=processed_corpus,
-                     vector_size=100, window=5, min_count=1, workers=4)
+    # model = Word2Vec(sentences=processed_corpus,
+    #                  vector_size=100, window=5, min_count=1, workers=4)
+    # w2v
+    model = api.load('word2vec-google-news-300')
     return model
 
 def expand_seeds(seeds, model, Tc, sentiment_terms):
@@ -47,12 +48,18 @@ def expand_seeds(seeds, model, Tc, sentiment_terms):
         if word not in sentiment_terms_in_vocab:
             continue
         for seed in seeds:
+
             if seed in seeds_in_vocab:
+                # Calculate similarity between seed and word
                 similarities[seed][word] = model.wv.similarity(seed, word)
             else:
+
+                # Get synonyms of seed
                 synonyms = set(get_synonyms(seed)).intersection(vocab)
+
                 for synonym in synonyms:
                     similarities[synonym][word] = model.wv.similarity(synonym, word)
+
                 if not synonyms:
                     similarities[seed][word] = 0
 
@@ -94,20 +101,13 @@ def label_propagation(G, seeds, max_iterations=100):
 
 def classify_corpus(df):
     # Load the model
-    model = joblib.load('models/extroversion_model.pkl')
-
-    # Load the vectorizer
-    vectorizer = joblib.load('models/vectorizer.pkl')
+    model = joblib.load('models/extroversion_model_cv.pkl')
 
     # Preprocess the text
     df['preprocessed_text'] = df['review_text'].apply(preprocess_text)
 
-    # Vectorize the text
-    X = vectorizer.transform(df['preprocessed_text'])
-
-    # Predict the label
-    prediction = model.predict(X)
-
+    prediction = model.predict(df['preprocessed_text'])
+    
     # Classify the corpus
     df['personality_trait'] = prediction
 
@@ -123,16 +123,17 @@ def build_lexicon(labels):
 
 def main(corpus, seeds, Tc):
     processed_corpus, sentiment_terms = preprocess_corpus(corpus, 'review_text')
+
     model = learn_word_embeddings(processed_corpus)
+
     C, seeds = expand_seeds(seeds, model, Tc, sentiment_terms)
 
     G = build_semantic_graph(C, model)
     # class_corpus = classify_corpus(corpus)
 
-    labels = label_propagation(G, seeds)
-    lexicon = build_lexicon(labels)
-
-    # class_corpus.to_csv('data/classified_corpus.csv', index=False)
+    # labels = label_propagation(G, seeds)
+    # lexicon = build_lexicon(labels)
+    lexicon = None 
     return lexicon, G, C
 
 
@@ -140,16 +141,21 @@ if __name__ == "__main__":
     # Example usage
     corpus = pd.read_csv('data/sample.csv')
     seeds = pd.read_csv('data/seeds.csv')
+    liwc_seeds = pd.read_csv('data/liwc_lexicon.csv')
 
-    seeds = {word: trait for trait in seeds.columns for word in seeds[trait].dropna().tolist()}
+    # OCEAN traits
+    # seeds = {word: trait for trait in seeds.columns for word in seeds[trait].dropna().tolist()}
 
-    Tc = 0.5  # Threshold for similarity
+    # LIWC
+    seeds = {word: category for word, category in zip(liwc_seeds['word'], liwc_seeds['categories'])}
+
+
+    Tc = 0.9  # Threshold for similarity
     lexicon, G, C = main(corpus, seeds, Tc)
-    # main(corpus, seeds, Tc)
 
-    lexicon = {key: list(value) for key, value in lexicon.items()}
+    # lexicon = {key: list(value) for key, value in lexicon.items()}
 
-    write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
+    # write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
     write_to_file('output/graph.txt', G.edges())
     write_to_file('output/candidate.txt', C)
 
