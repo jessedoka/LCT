@@ -1,5 +1,4 @@
 import nltk 
-from nltk.corpus import sentiwordnet as swn
 from nltk.corpus import opinion_lexicon
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -49,9 +48,12 @@ def preprocess_corpus(corpus: pd.DataFrame, text_column: str):
     print("tokenising sentences...")
     sentences = [sentence.lower() for sentence in samples]
 
+    print("removing stop words and numbers -> lemmatisation")
     # stop words and numbers
     stop_words = set(stopwords.words('english'))
     sentences = [' '.join([word for word in word_tokenize(sentence) if word not in stop_words and not word.isdigit()]) for sentence in tqdm(sentences)]
+
+    print("lemmatisation")
 
     # lemmisation
     lemmatizer = WordNetLemmatizer()

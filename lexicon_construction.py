@@ -1,14 +1,20 @@
+from pyexpat import model
 from gensim.models import Word2Vec
 from gensim import downloader as api
+from gensim.models import KeyedVectors
+
+from matplotlib import category
 import networkx as nx
 import pandas as pd
 from collections import defaultdict
 
+import ast
 import nltk
 from nltk.corpus import sentiwordnet as swn
 
 import json
 from tqdm import tqdm
+import numpy as np
 from preprocessing import preprocess_corpus, preprocess_text, write_to_file
 
 import joblib
@@ -27,48 +33,34 @@ def get_synonyms(word):
             synonyms.add(lemma.name())
     return synonyms
 
-def learn_word_embeddings(processed_corpus):
-    # Train a Word2Vec model on the processed corpus
-    # model = Word2Vec(sentences=processed_corpus,
-    #                  vector_size=100, window=5, min_count=1, workers=4)
-    # w2v
-    model = api.load('word2vec-google-news-300')
-    return model
-
-def expand_seeds(seeds, model, Tc, sentiment_terms):
+def expand_seeds(seeds, model, Tc):
     print("expanding seeds")
     similarities = defaultdict(dict)
+
+    # seeds is a dictionary with words as keys and categories as values
+
+    # just get the words
+    seeds = set(seeds.keys())
     
     # Pre-calculate intersections
-    vocab = set(model.wv.index_to_key)
+    vocab = set(model.index_to_key)
     seeds_in_vocab = vocab.intersection(seeds)
-    sentiment_terms_in_vocab = vocab.intersection(sentiment_terms)
 
-    for word in tqdm(vocab):
-        if word not in sentiment_terms_in_vocab:
-            continue
-        for seed in seeds:
+    # print(sentiment_terms_in_vocab)
 
-            if seed in seeds_in_vocab:
-                # Calculate similarity between seed and word
-                similarities[seed][word] = model.wv.similarity(seed, word)
-            else:
+    for seed in tqdm(seeds_in_vocab):
+        for term in vocab:
+            similarity = model.similarity(seed, term)
+            if similarity > Tc:
+                similarities[seed][term] = similarity
 
-                # Get synonyms of seed
-                synonyms = set(get_synonyms(seed)).intersection(vocab)
+    # Sort by similarity
+    C = []
+    for seed, terms in similarities.items():
+        for term, similarity in terms.items():
+            C.append((seed, term))
 
-                for synonym in synonyms:
-                    similarities[synonym][word] = model.wv.similarity(synonym, word)
-
-                if not synonyms:
-                    similarities[seed][word] = 0
-
-    C = set()
-    for seed, similar_words in tqdm(similarities.items()):
-        for word, similarity in similar_words.items():
-            if similarity >= Tc:
-                C.add((seed, word))     
-    return C, seeds
+    return C
 
 def build_semantic_graph(C, model):
     G = nx.Graph()
@@ -76,27 +68,33 @@ def build_semantic_graph(C, model):
     for word_pair in tqdm(C):
         Si, Wj = word_pair
 
-        G.add_edge(Si, Wj, weight=model.wv.similarity(Si, Wj))
+        G.add_edge(Si, Wj, weight=model.similarity(Si, Wj))
     return G
 
-def label_propagation(G, seeds, max_iterations=100):
-    # Initialize labels based on seeds
-    labels = {node: "objective" for node in G.nodes()}  # Default label
-    for seed, label in seeds.items():
-        labels[seed] = label  # label for each seed
+def multi_label_propagation(G, seeds, max_iterations=100):
+    # Initialize labels for all nodes
+    labels = {node: [] for node in G.nodes()}
+    
+    # Assign seed labels
+    for node, label in seeds.items():
+        labels[node] = label
 
-    for _ in range(max_iterations):
-        prev_labels = labels.copy()
+    # Propagate labels
+    print("propagating labels")
+    for _ in tqdm(range(max_iterations)):
+        new_labels = labels.copy()
         for node in G.nodes():
-            if node not in seeds:  # Don't update seed labels
+            if node not in seeds:  # Don't update seed nodes
+                # Gather labels from neighbors
                 neighbor_labels = [labels[neighbor] for neighbor in G.neighbors(node)]
-
-                labels[node] = max(set(neighbor_labels), key=neighbor_labels.count)
-
-        # Check for convergence
-        if prev_labels == labels:
-            break
-        
+                neighbor_labels = [item for sublist in neighbor_labels for item in sublist]  # Flatten list
+                
+                # Assign the most common labels
+                if neighbor_labels:
+                    unique_labels, counts = np.unique(neighbor_labels, return_counts=True)
+                    common_labels = unique_labels[np.where(counts == np.max(counts))]
+                    new_labels[node] = list(common_labels)
+        labels = new_labels
     return labels
 
 def classify_corpus(df):
@@ -116,46 +114,55 @@ def classify_corpus(df):
 def build_lexicon(labels):
     lexicon = defaultdict(set)
     print("building lexicon")
-    for word, label in tqdm(labels.items()):
-        if label is not None:
-            lexicon[label].add(word)
+    
+    # Group words by label
+    for word, categories in tqdm(labels.items()):
+        for category in categories:
+            lexicon[category].add(word)
     return lexicon
 
 def main(corpus, seeds, Tc):
-    processed_corpus, sentiment_terms = preprocess_corpus(corpus, 'review_text')
+    # _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
 
-    model = learn_word_embeddings(processed_corpus)
+    model = api.load("word2vec-google-news-300")
 
-    C, seeds = expand_seeds(seeds, model, Tc, sentiment_terms)
+    C = expand_seeds(seeds, model, Tc)
 
     G = build_semantic_graph(C, model)
     # class_corpus = classify_corpus(corpus)
 
-    # labels = label_propagation(G, seeds)
-    # lexicon = build_lexicon(labels)
-    lexicon = None 
+    labels = multi_label_propagation(G, seeds)
+    lexicon = build_lexicon(labels)
+    # lexicon = None
     return lexicon, G, C
 
 
 if __name__ == "__main__":
     # Example usage
     corpus = pd.read_csv('data/sample.csv')
-    seeds = pd.read_csv('data/seeds.csv')
-    liwc_seeds = pd.read_csv('data/liwc_lexicon.csv')
+    ocean = pd.read_csv('data/seeds.csv')
+    liwc = pd.read_csv('data/liwc_lexicon.csv')
 
     # OCEAN traits
-    # seeds = {word: trait for trait in seeds.columns for word in seeds[trait].dropna().tolist()}
+    # Create dictionaries as before
+    ocean = {word: trait for trait in ocean.columns for word in ocean[trait].dropna().tolist()}
 
-    # LIWC
-    seeds = {word: category for word, category in zip(liwc_seeds['word'], liwc_seeds['categories'])}
+    liwc = {word: ast.literal_eval(category) for word, category in zip(liwc['word'], liwc['categories'])}
 
+    # Create a new dictionary that only includes words present in both dictionaries
+    seeds = {word: [ocean[word]] + liwc[word] for word in ocean if word in liwc}
 
-    Tc = 0.9  # Threshold for similarity
+    # how many words are in seeds? 
+    print(len(seeds))
+
+    Tc = 0.5  # Threshold for similarity
     lexicon, G, C = main(corpus, seeds, Tc)
 
-    # lexicon = {key: list(value) for key, value in lexicon.items()}
+    # print(lexicon)
+    lexicon = {key: list(value) for key, value in lexicon.items()}
 
-    # write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
+    write_to_file('output/seeds.json', json.dumps(seeds, indent=4))
+    write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
     write_to_file('output/graph.txt', G.edges())
-    write_to_file('output/candidate.txt', C)
+    write_to_file('output/candidate.txt', str(C))
 
