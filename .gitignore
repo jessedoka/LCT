@@ -3,7 +3,7 @@ env
 venv
 
 
-data/*
+
 texts/*
 output/*
 models/*
