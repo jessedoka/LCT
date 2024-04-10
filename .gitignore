@@ -2,7 +2,7 @@
 env 
 venv
 
-
+!outpit/lexicon.json
 
 texts/*
 output/*
