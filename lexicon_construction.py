@@ -33,7 +33,7 @@ def get_synonyms(word):
             synonyms.add(lemma.name())
     return synonyms
 
-def expand_seeds(seeds, model, Tc):
+def expand_seeds(seeds, model, Tc, sentiment_terms):
     print("expanding seeds")
     similarities = defaultdict(dict)
 
@@ -45,11 +45,10 @@ def expand_seeds(seeds, model, Tc):
     # Pre-calculate intersections
     vocab = set(model.index_to_key)
     seeds_in_vocab = vocab.intersection(seeds)
-
-    # print(sentiment_terms_in_vocab)
+    sentiment_terms_in_vocab = vocab.intersection(sentiment_terms)
 
     for seed in tqdm(seeds_in_vocab):
-        for term in vocab:
+        for term in sentiment_terms_in_vocab:
             similarity = model.similarity(seed, term)
             if similarity > Tc:
                 similarities[seed][term] = similarity
@@ -84,10 +83,11 @@ def multi_label_propagation(G, seeds, max_iterations=100):
     for _ in tqdm(range(max_iterations)):
         new_labels = labels.copy()
         for node in G.nodes():
-            if node not in seeds:  # Don't update seed nodes
+            if node not in seeds:  
+
                 # Gather labels from neighbors
                 neighbor_labels = [labels[neighbor] for neighbor in G.neighbors(node)]
-                neighbor_labels = [item for sublist in neighbor_labels for item in sublist]  # Flatten list
+                neighbor_labels = [item for sublist in neighbor_labels for item in sublist] 
                 
                 # Assign the most common labels
                 if neighbor_labels:
@@ -122,11 +122,11 @@ def build_lexicon(labels):
     return lexicon
 
 def main(corpus, seeds, Tc):
-    # _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
+    _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
 
     model = api.load("word2vec-google-news-300")
 
-    C = expand_seeds(seeds, model, Tc)
+    C = expand_seeds(seeds, model, Tc, sentiment_terms)
 
     G = build_semantic_graph(C, model)
     # class_corpus = classify_corpus(corpus)
@@ -139,7 +139,7 @@ def main(corpus, seeds, Tc):
 
 if __name__ == "__main__":
     # Example usage
-    corpus = pd.read_csv('data/sample.csv')
+    corpus = pd.read_csv('data/sample3.csv')
     ocean = pd.read_csv('data/seeds.csv')
     liwc = pd.read_csv('data/liwc_lexicon.csv')
 
