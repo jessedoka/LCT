@@ -2,8 +2,9 @@
 env 
 venv
 
-!outpit/lexicon.json
+!output/lexicon.json
 
+data/*
 texts/*
 output/*
 models/*
