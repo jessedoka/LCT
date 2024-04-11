@@ -12,3 +12,4 @@ bin.txt
 notes/*
 
 *.pyc
+data/goodreads_reviews_dedup.json.gz
