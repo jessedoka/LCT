@@ -1,3 +1,4 @@
+from os import write
 from pyexpat import model
 from gensim.models import Word2Vec
 from gensim import downloader as api
@@ -15,7 +16,7 @@ from nltk.corpus import sentiwordnet as swn
 import json
 from tqdm import tqdm
 import numpy as np
-from preprocessing import preprocess_corpus, preprocess_text, write_to_file
+from preprocessing import preprocess_corpus, preprocess_text, write_to_file, invert_dict
 
 import joblib
 
@@ -103,7 +104,6 @@ def classify_corpus(df):
 
     # Preprocess the text
     df['preprocessed_text'] = df['review_text'].apply(preprocess_text)
-
     prediction = model.predict(df['preprocessed_text'])
     
     # Classify the corpus
@@ -119,7 +119,7 @@ def build_lexicon(labels):
     for word, categories in tqdm(labels.items()):
         for category in categories:
             lexicon[category].add(word)
-    return lexicon
+    return {key: list(value) for key, value in lexicon.items()}
 
 def main(corpus, seeds, Tc):
     _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
@@ -133,15 +133,17 @@ def main(corpus, seeds, Tc):
 
     labels = multi_label_propagation(G, seeds)
     lexicon = build_lexicon(labels)
-    # lexicon = None
+
     return lexicon, G, C
 
 
 if __name__ == "__main__":
     # Example usage
-    corpus = pd.read_csv('data/sample3.csv')
+    corpus = pd.read_csv('data/sample.csv')
     ocean = pd.read_csv('data/seeds.csv')
     liwc = pd.read_csv('data/liwc_lexicon.csv')
+
+    subcorpus = corpus.sample(1000)
 
     # OCEAN traits
     # Create dictionaries as before
@@ -152,17 +154,12 @@ if __name__ == "__main__":
     # Create a new dictionary that only includes words present in both dictionaries
     seeds = {word: [ocean[word]] + liwc[word] for word in ocean if word in liwc}
 
-    # how many words are in seeds? 
-    print(len(seeds))
-
     Tc = 0.5  # Threshold for similarity
-    lexicon, G, C = main(corpus, seeds, Tc)
-
-    # print(lexicon)
-    lexicon = {key: list(value) for key, value in lexicon.items()}
+    lexicon, G, C = main(subcorpus, seeds, Tc)
 
     write_to_file('output/seeds.json', json.dumps(seeds, indent=4))
     write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
     write_to_file('output/graph.txt', G.edges())
     write_to_file('output/candidate.txt', str(C))
+    write_to_file('output/inverted_lexicon.json', invert_dict(lexicon))
 

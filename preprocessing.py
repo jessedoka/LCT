@@ -9,6 +9,7 @@ from nltk.stem import WordNetLemmatizer
 import string
 import pandas as pd
 from tqdm import tqdm
+import json
 
 nltk.download('opinion_lexicon')
 nltk.download('stopwords')
@@ -94,13 +95,33 @@ def preprocess_text(text: str):
 
     return processed_text, sentiment_terms
 
+
+def invert_dict(d: dict[str, list[str]]) -> dict[str, list[str]]:
+    # Invert a dictionary
+    inverted_dict = {}
+    for key, values in tqdm(d.items()):
+        for value in values:
+            if value in inverted_dict:
+                inverted_dict[value].append(key)
+            else:
+                inverted_dict[value] = [key]
+        
+    return {key: list(value) for key, value in inverted_dict.items()}
+
 if __name__ == "__main__":
 
     # Load the dataset
-    df = pd.read_csv('data/essays.csv')
-    processed_corpus, sentiment_terms = preprocess_corpus(df, 'TEXT')
+    # df = pd.read_csv('data/essays.csv')
+    # processed_corpus, sentiment_terms = preprocess_corpus(df, 'TEXT')
 
-    # Write the processed corpus and sentiment terms to files
-    write_to_file('output/processed_corpus.txt', str(processed_corpus))
-    write_to_file('output/sentiment_terms.txt', str(sentiment_terms))
+    # # Write the processed corpus and sentiment terms to files
+    # write_to_file('output/processed_corpus.txt', str(processed_corpus))
+    # write_to_file('output/sentiment_terms.txt', str(sentiment_terms))
+
+    with open('output/lexicon.json', 'r') as f:
+        lexicon = json.load(f)
+
+    lexicon = invert_dict(lexicon)
+    write_to_file('output/inverted_lexicon.json', json.dumps(lexicon, indent=4))
+
 
