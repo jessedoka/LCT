@@ -8,7 +8,8 @@ data/*
 texts/*
 output/*
 models/*
-bin.txt
+
+results/*
 
 notes/*
 
