@@ -105,17 +105,6 @@ def build_lexicon(labels):
             lexicon[category].add(word)
     return {key: list(value) for key, value in lexicon.items()}
 
-def count_category(lexicon, reviews):
-    # evaluate lexicon by calculating the number of reviews that contain at least one word from a category
-    reviews = [set(review) for review in reviews]
-    categories = lexicon.keys()
-    category_counts = {category: 0 for category in categories}
-    for review in reviews:
-        for category in categories:
-            if any(word in review for word in lexicon[category]):
-                category_counts[category] += 1
-    return category_counts
-
 def main(corpus, seeds, Tc):
     _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
 
@@ -151,10 +140,7 @@ if __name__ == "__main__":
     lexicon, G, C = main(subcorpus, seeds, Tc)
 
     # collect only a subset of the reviews
-    reviews = subcorpus['review_text'].sample(len(subcorpus) // 10)
-    classified_reviews = count_category(lexicon, reviews)
-
-    write_to_file('output/classified_reviews.json', json.dumps(classified_reviews, indent=4))
+   
 
     write_to_file('output/seeds.json', json.dumps(seeds, indent=4))
     write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
