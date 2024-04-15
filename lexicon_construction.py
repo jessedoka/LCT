@@ -1,10 +1,7 @@
-from os import write
-from pyexpat import model
+
 from gensim.models import Word2Vec
 from gensim import downloader as api
-from gensim.models import KeyedVectors
 
-from matplotlib import category
 import networkx as nx
 import pandas as pd
 from collections import defaultdict
@@ -12,13 +9,13 @@ from collections import defaultdict
 import ast
 import nltk
 from nltk.corpus import sentiwordnet as swn
+import liwc
 
 import json
+from torch import le
 from tqdm import tqdm
 import numpy as np
-from preprocessing import preprocess_corpus, preprocess_text, write_to_file, invert_dict
-
-import joblib
+from preprocessing import preprocess_corpus, write_to_file, invert_dict
 
 nltk.download('opinion_lexicon')
 nltk.download('stopwords')
@@ -98,19 +95,6 @@ def multi_label_propagation(G, seeds, max_iterations=100):
         labels = new_labels
     return labels
 
-def classify_corpus(df):
-    # Load the model
-    model = joblib.load('models/extroversion_model_cv.pkl')
-
-    # Preprocess the text
-    df['preprocessed_text'] = df['review_text'].apply(preprocess_text)
-    prediction = model.predict(df['preprocessed_text'])
-    
-    # Classify the corpus
-    df['personality_trait'] = prediction
-
-    return df
-
 def build_lexicon(labels):
     lexicon = defaultdict(set)
     print("building lexicon")
@@ -121,6 +105,17 @@ def build_lexicon(labels):
             lexicon[category].add(word)
     return {key: list(value) for key, value in lexicon.items()}
 
+def count_category(lexicon, reviews):
+    # evaluate lexicon by calculating the number of reviews that contain at least one word from a category
+    reviews = [set(review) for review in reviews]
+    categories = lexicon.keys()
+    category_counts = {category: 0 for category in categories}
+    for review in reviews:
+        for category in categories:
+            if any(word in review for word in lexicon[category]):
+                category_counts[category] += 1
+    return category_counts
+
 def main(corpus, seeds, Tc):
     _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
 
@@ -129,7 +124,6 @@ def main(corpus, seeds, Tc):
     C = expand_seeds(seeds, model, Tc, sentiment_terms)
 
     G = build_semantic_graph(C, model)
-    # class_corpus = classify_corpus(corpus)
 
     labels = multi_label_propagation(G, seeds)
     lexicon = build_lexicon(labels)
@@ -146,7 +140,6 @@ if __name__ == "__main__":
     subcorpus = corpus.sample(1000)
 
     # OCEAN traits
-    # Create dictionaries as before
     ocean = {word: trait for trait in ocean.columns for word in ocean[trait].dropna().tolist()}
 
     liwc = {word: ast.literal_eval(category) for word, category in zip(liwc['word'], liwc['categories'])}
@@ -154,8 +147,14 @@ if __name__ == "__main__":
     # Create a new dictionary that only includes words present in both dictionaries
     seeds = {word: [ocean[word]] + liwc[word] for word in ocean if word in liwc}
 
-    Tc = 0.5  # Threshold for similarity
+    Tc = 0.7  # Threshold for similarity
     lexicon, G, C = main(subcorpus, seeds, Tc)
+
+    # collect only a subset of the reviews
+    reviews = subcorpus['review_text'].sample(len(subcorpus) // 10)
+    classified_reviews = count_category(lexicon, reviews)
+
+    write_to_file('output/classified_reviews.json', json.dumps(classified_reviews, indent=4))
 
     write_to_file('output/seeds.json', json.dumps(seeds, indent=4))
     write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
