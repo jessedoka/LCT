@@ -15,6 +15,7 @@ import json
 from torch import le
 from tqdm import tqdm
 import numpy as np
+
 from preprocessing import preprocess_corpus, write_to_file, invert_dict
 
 nltk.download('opinion_lexicon')
