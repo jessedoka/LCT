@@ -1,10 +1,12 @@
 
+from re import sub
 from gensim.models import Word2Vec
 from gensim import downloader as api
 
 import networkx as nx
 import pandas as pd
 from collections import defaultdict
+import matplotlib.pyplot as plt
 
 import ast
 import nltk
@@ -106,7 +108,7 @@ def build_lexicon(labels):
             lexicon[category].add(word)
     return {key: list(value) for key, value in lexicon.items()}
 
-def main(corpus, seeds, Tc):
+def construct(corpus, seeds, Tc):
     _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
 
     model = api.load("word2vec-google-news-300")
@@ -127,8 +129,6 @@ if __name__ == "__main__":
     ocean = pd.read_csv('data/seeds.csv')
     liwc = pd.read_csv('data/liwc_lexicon.csv')
 
-    subcorpus = corpus.sample(1000)
-
     # OCEAN traits
     ocean = {word: trait for trait in ocean.columns for word in ocean[trait].dropna().tolist()}
 
@@ -137,15 +137,10 @@ if __name__ == "__main__":
     # Create a new dictionary that only includes words present in both dictionaries
     seeds = {word: [ocean[word]] + liwc[word] for word in ocean if word in liwc}
 
+    subcorpus = corpus.sample(100)
+
     Tc = 0.7  # Threshold for similarity
-    lexicon, G, C = main(subcorpus, seeds, Tc)
 
-    # collect only a subset of the reviews
-   
+    lexicon, G, C = construct(subcorpus, seeds, Tc)
 
-    write_to_file('output/seeds.json', json.dumps(seeds, indent=4))
-    write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
-    write_to_file('output/graph.txt', G.edges())
-    write_to_file('output/candidate.txt', str(C))
-    write_to_file('output/inverted_lexicon.json', invert_dict(lexicon))
-
+    print(len(lexicon), len(invert_dict(lexicon)), len(G.edges()), len(C))
