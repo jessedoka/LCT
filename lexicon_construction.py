@@ -137,10 +137,17 @@ if __name__ == "__main__":
     # Create a new dictionary that only includes words present in both dictionaries
     seeds = {word: [ocean[word]] + liwc[word] for word in ocean if word in liwc}
 
-    subcorpus = corpus.sample(100)
-
     Tc = 0.7  # Threshold for similarity
-
-    lexicon, G, C = construct(subcorpus, seeds, Tc)
+    lexicon, G, C = construct(corpus, seeds, Tc)
 
     print(len(lexicon), len(invert_dict(lexicon)), len(G.edges()), len(C))
+
+    # show me a graph as a png
+
+    plt.figure(figsize=(20, 20))
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True, font_size=20, node_size=50, edge_color='gray', alpha=0.5, width=0.5, font_color='black')
+
+    plt.savefig('output/graph.png')
+
+

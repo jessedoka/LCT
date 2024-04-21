@@ -1,4 +1,3 @@
-from os import write
 import requests
 import json
 from preprocessing import invert_dict, write_to_file
@@ -21,7 +20,7 @@ def liwc_comparison(lexicon, reviews):
     for review in tokenised_reviews:
         test = Counter(category for token in review for category in parse(token))
 
-        # get the categories that are in the lexicon from each token in revieww
+        # get the categories that are in the lexicon from each token in review
         categories = Counter(category for token in review for category in parse(token) if category in lexicon)
 
         # compare categories with test and get the intersection of the two

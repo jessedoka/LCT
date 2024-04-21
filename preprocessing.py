@@ -33,6 +33,7 @@ def extract_sentiment_terms(sentence):
 
     for word, tag in tagged_words:
         if word.lower() not in stop_words and word not in string.punctuation:
+            # Check if word is an adjective or adverb
             if tag.startswith('JJ') or tag.startswith('RB'):
                 if word.lower() in opinion_lexicon.negative() or word.lower() in opinion_lexicon.positive():
                     sentiment_terms.add(word)

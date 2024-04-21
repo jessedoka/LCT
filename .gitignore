@@ -15,3 +15,5 @@ notes/*
 
 *.pyc
 data/goodreads_reviews_dedup.json.gz
+11_5_LIWC.ipynb
+.DS_Store
