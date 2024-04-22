@@ -3,7 +3,6 @@ from nltk.corpus import opinion_lexicon
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk import pos_tag
-# lemmitization
 from nltk.stem import WordNetLemmatizer
 
 import string
@@ -28,14 +27,20 @@ def extract_sentiment_terms(sentence):
     # Tokenize words and tag part of speech
     words = word_tokenize(sentence)
     stop_words = set(stopwords.words('english'))
+    punctuation = set(string.punctuation)
     tagged_words = pos_tag(words)
     sentiment_terms = set()
 
+    # Convert opinion lexicon to sets for faster lookup
+    negative_lexicon = set(opinion_lexicon.negative())
+    positive_lexicon = set(opinion_lexicon.positive())
+
     for word, tag in tagged_words:
-        if word.lower() not in stop_words and word not in string.punctuation:
+        lower_word = word.lower()
+        if lower_word not in stop_words and word not in punctuation:
             # Check if word is an adjective or adverb
             if tag.startswith('JJ') or tag.startswith('RB'):
-                if word.lower() in opinion_lexicon.negative() or word.lower() in opinion_lexicon.positive():
+                if lower_word in negative_lexicon or lower_word in positive_lexicon:
                     sentiment_terms.add(word)
             
     return sentiment_terms

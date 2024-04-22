@@ -1,15 +1,26 @@
+from numpy import invert
 import requests
 import json
+import random
+
+import matplotlib.pyplot as plt
+import networkx as nx
+
 from preprocessing import invert_dict, write_to_file
+from lexicon_construction import construct
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
 from tqdm import tqdm
 import pandas as pd
+
 import liwc
+
 from collections import Counter
-import nltk
 
+import nltk 
+import ast
 
-
-def liwc_comparison(lexicon, reviews):
+def liwc_comparison(lexicon, reviews, max_iter=10):
     # Load the LIWC dictionary
     parse, category_names = liwc.load_token_parser('data/LIWC2007_English100131.dic')
 
@@ -29,7 +40,18 @@ def liwc_comparison(lexicon, reviews):
         accuracy = sum(intersection.values()) / sum(test.values()) if sum(test.values()) > 0 else 0
         
         accuracies.append(accuracy)
-    return sum(accuracies) / len(accuracies)
+
+        reviews = reviews['review_text'].sample(len(reviews) // 10)
+  
+
+        for _ in range(max_iter):
+            try:
+                v = sum(accuracies) / len(accuracies)
+            except ZeroDivisionError:
+                v = 0
+            v_avg += v
+        
+    return v_avg / max_iter # 88.59520391834048%
 
 
 def sentence_generation(words: list) -> list:
@@ -71,29 +93,57 @@ def llm_evaluate(sentences: list, categories: list) -> None:
 
     return None
 
-def main():
-    with open('output/lexicon.json', 'r') as f:
-        lexicon = json.load(f)
+def show_graph(G):
+    plt.figure(figsize=(20, 20))
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True, font_size=20, node_size=50, edge_color='gray', alpha=0.5, width=2, font_color='black')
 
-    reviews = pd.read_csv('data/sample.csv')
-
-    inverted_lexicon = invert_dict(lexicon)
-    words = list(inverted_lexicon.keys())
-
-    # print(llm_evaluate(sentences, categories))
-
-    reviews = reviews['review_text'].sample(len(reviews) // 10)
-    max_iter = 10
-    v_avg = 0
-    for _ in range(max_iter):
-        v = liwc_comparison(lexicon, reviews)
-        v_avg += v
-    print(v_avg / max_iter) # 88.59520391834048%
+    plt.savefig('output/graph.png')
 
 
-    
 
+def consistency_check(lexicon, C):
+    """
+    Review if similar words have been grouped under consistent categories and if the classifications make sense logically. For instance, check if synonyms or related words consistently share categories.
+    """
+
+    # Check if similar words have been grouped under consistent categories
+    for seed, term in C:
+        if seed in lexicon and term in lexicon and seed != term:
+            # similarity percentage between seed and term 
+            similarity = len(set(lexicon[seed]) & set(lexicon[term])) / len(set(lexicon[seed]) | set(lexicon[term]))
+            
+            print(f"Similarity between {seed} and {term}: {similarity}")
+
+    return None
 
 
 if __name__ == "__main__":
-    main()
+
+    # Example usage
+    corpus = pd.read_csv('data/sample3.csv')
+    ocean = pd.read_csv('data/ocean.csv')
+    liwc = pd.read_csv('data/liwc.csv')
+
+    # creating seeds... 
+    ocean = {word: trait for trait in ocean.columns for word in ocean[trait].dropna().tolist()}
+    liwc = {word: ast.literal_eval(category) for word, category in zip(liwc['word'], liwc['categories'])}
+
+    # Create a new dictionary that only includes words present in both dictionaries
+    seeds = {word: [ocean[word]] + liwc[word] for word in ocean if word in liwc}
+
+    # words that are unique to liwc
+    liwc_unique = {word: liwc[word] for word in liwc if word not in ocean}
+    ocean_unique = {word: ocean[word] for word in ocean if word not in liwc} 
+
+    Tc = 0.7  # Threshold for similarity
+    lexicon, G, C = construct(corpus, seeds, Tc)
+
+    print(len(lexicon), len(invert_dict(lexicon)), len(G.edges), len(C))
+    write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
+    consistency_check(lexicon, C)
+    # print(llm_evaluate(sentences, categories)) # intensive computation
+
+    # print(evaluate_lexicon(invert_dict(lexicon), true_seeds)) # 0.0
+    # (0.782608695652174, 1.0, 0.9444444444444444, 0.9714285714285714) 
+

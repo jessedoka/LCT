@@ -6,19 +6,18 @@ from gensim import downloader as api
 import networkx as nx
 import pandas as pd
 from collections import defaultdict
-import matplotlib.pyplot as plt
 
-import ast
+
 import nltk
 from nltk.corpus import sentiwordnet as swn
 import liwc
 
 import json
-from torch import le
 from tqdm import tqdm
 import numpy as np
 
 from preprocessing import preprocess_corpus, write_to_file, invert_dict
+from sklearn.neighbors import NearestNeighbors
 
 nltk.download('opinion_lexicon')
 nltk.download('stopwords')
@@ -38,25 +37,42 @@ def expand_seeds(seeds, model, Tc, sentiment_terms):
     print("expanding seeds")
     similarities = defaultdict(dict)
 
-    # seeds is a dictionary with words as keys and categories as values
-
     # just get the words
     seeds = set(seeds.keys())
-    
+
     # Pre-calculate intersections
     vocab = set(model.index_to_key)
     seeds_in_vocab = vocab.intersection(seeds)
     sentiment_terms_in_vocab = vocab.intersection(sentiment_terms)
 
-    for seed in tqdm(seeds_in_vocab):
-        for term in sentiment_terms_in_vocab:
-            similarity = model.similarity(seed, term)
-            if similarity > Tc:
-                similarities[seed][term] = similarity
+    # Create a mapping from index to term
+    index_to_term = list(seeds_in_vocab) + list(sentiment_terms_in_vocab)
+    term_to_index = {term: index for index, term in enumerate(index_to_term)}
+
+    # Create a matrix of all vectors
+    vectors = np.array([model[term] for term in index_to_term])
+
+    # Fit nearest neighbors model
+    neighbors = NearestNeighbors(n_neighbors=len(vectors), metric='cosine')
+    neighbors.fit(vectors)
+    
+    print("finding neighbors")
+    # Find neighbors for each vector
+    for i, vector in tqdm(enumerate(vectors)):
+        distances, indices = neighbors.kneighbors([vector]) #type: ignore
+
+        # Iterate over neighbors
+        for distance, index in zip(distances[0], indices[0]):
+            # Only consider neighbors with cosine similarity > Tc
+            if 1 - distance > Tc:
+                term1 = index_to_term[i]
+                term2 = index_to_term[index]
+                similarities[term1][term2] = 1 - distance
 
     # Sort by similarity
+    print("sorting by similarity")
     C = []
-    for seed, terms in similarities.items():
+    for seed, terms in tqdm(similarities.items()):
         for term, similarity in terms.items():
             C.append((seed, term))
 
@@ -122,32 +138,5 @@ def construct(corpus, seeds, Tc):
 
     return lexicon, G, C
 
-
-if __name__ == "__main__":
-    # Example usage
-    corpus = pd.read_csv('data/sample.csv')
-    ocean = pd.read_csv('data/seeds.csv')
-    liwc = pd.read_csv('data/liwc_lexicon.csv')
-
-    # OCEAN traits
-    ocean = {word: trait for trait in ocean.columns for word in ocean[trait].dropna().tolist()}
-
-    liwc = {word: ast.literal_eval(category) for word, category in zip(liwc['word'], liwc['categories'])}
-
-    # Create a new dictionary that only includes words present in both dictionaries
-    seeds = {word: [ocean[word]] + liwc[word] for word in ocean if word in liwc}
-
-    Tc = 0.7  # Threshold for similarity
-    lexicon, G, C = construct(corpus, seeds, Tc)
-
-    print(len(lexicon), len(invert_dict(lexicon)), len(G.edges()), len(C))
-
-    # show me a graph as a png
-
-    plt.figure(figsize=(20, 20))
-    pos = nx.spring_layout(G)
-    nx.draw(G, pos, with_labels=True, font_size=20, node_size=50, edge_color='gray', alpha=0.5, width=0.5, font_color='black')
-
-    plt.savefig('output/graph.png')
 
 
