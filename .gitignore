@@ -5,6 +5,8 @@ venv
 !output/lexicon.json
 
 data/*
+!data/liwc.csv
+!data/ocean.csv
 texts/*
 output/*
 models/*
