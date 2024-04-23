@@ -33,6 +33,13 @@ def get_synonyms(word):
             synonyms.add(lemma.name())
     return synonyms
 
+def learn_word_embeddings(processed_corpus):
+    print("learning word embeddings")
+    model = Word2Vec(sentences=processed_corpus,
+                     vector_size=100, window=5, min_count=1, workers=4)
+    return model.wv
+
+
 def expand_seeds(seeds, model, Tc, sentiment_terms):
     print("expanding seeds")
     similarities = defaultdict(dict)
@@ -128,10 +135,9 @@ def build_lexicon(labels):
     return {key: list(value) for key, value in lexicon.items()}
 
 def construct(corpus, seeds, Tc):
-    _, sentiment_terms = preprocess_corpus(corpus, 'review_text')
-
+    processed_corpus, sentiment_terms = preprocess_corpus(corpus, 'review_text')
+    # model = learn_word_embeddings(processed_corpus)
     model = api.load("word2vec-google-news-300")
-
     C = expand_seeds(seeds, model, Tc, sentiment_terms)
 
     G = build_semantic_graph(C, model)

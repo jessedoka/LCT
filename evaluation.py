@@ -98,7 +98,7 @@ def show_graph(G):
     pos = nx.spring_layout(G)
     nx.draw(G, pos, with_labels=True, node_size=50, font_size=10, font_color='black', font_weight='bold', edge_color='gray', node_color='skyblue', linewidths=0.5)
 
-    plt.savefig('output/graph.png')
+    plt.savefig('output/graph1.png')
 
 
 
@@ -121,7 +121,7 @@ def consistency_check(lexicon, C):
 if __name__ == "__main__":
 
     # Example usage
-    corpus = pd.read_csv('data/sample3.csv').sample(60000)
+    corpus = pd.read_pickle('data/sample3.pkl').sample(200000)
     ocean = pd.read_csv('data/ocean.csv')
     liwc = pd.read_csv('data/liwc.csv')
 
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     Tc = 0.7  # Threshold for similarity
     lexicon, G, C = construct(corpus, seeds, Tc)
 
-    print(len(lexicon), len(invert_dict(lexicon)), len(G.edges), len(C))
+    print(f"Lexicon: {len(lexicon)}, Nodes: {len(G.nodes)}, Edges: {len(G.edges)}, Candidate words: {len(C)}")
     write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
     consistency_check(lexicon, C)
     show_graph(G)

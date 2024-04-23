@@ -3,10 +3,10 @@ env
 venv
 
 !output/lexicon.json
-
+!data/sample3.pkl
 data/*
 !data/liwc.csv
-!data/ocean.csv
+data/ocean.csv
 texts/*
 output/*
 models/*
