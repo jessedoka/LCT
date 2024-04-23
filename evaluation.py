@@ -139,7 +139,7 @@ if __name__ == "__main__":
     Tc = 0.7  # Threshold for similarity
     lexicon, G, C = construct(corpus, seeds, Tc)
 
-    print(f"Lexicon: {len(lexicon)}, Nodes: {len(G.nodes)}, Edges: {len(G.edges)}, Candidate words: {len(C)}")
+    print(f"Categories: {len(lexicon)}, Words: {len(invert_dict(lexicon))} Nodes: {len(G.nodes)}, Edges: {len(G.edges)}, Candidate words: {len(C)}")
     write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
     consistency_check(lexicon, C)
     show_graph(G)
