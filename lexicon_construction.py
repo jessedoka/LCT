@@ -67,7 +67,10 @@ def expand_seeds(seeds, model, Tc, sentiment_terms):
             if 1 - distance > Tc:
                 term1 = index_to_term[i]
                 term2 = index_to_term[index]
-                similarities[term1][term2] = 1 - distance
+                
+                # Make sure the two terms are not the same
+                if term1 != term2:
+                    similarities[term1][term2] = 1 - distance
 
     # Sort by similarity
     print("sorting by similarity")
@@ -83,8 +86,8 @@ def build_semantic_graph(C, model):
     print("building semantic graph")
     for word_pair in tqdm(C):
         Si, Wj = word_pair
-
-        G.add_edge(Si, Wj, weight=model.similarity(Si, Wj))
+        if Si != Wj:
+            G.add_edge(Si, Wj, weight=model.similarity(Si, Wj))
     return G
 
 def multi_label_propagation(G, seeds, max_iterations=100):

@@ -94,9 +94,9 @@ def llm_evaluate(sentences: list, categories: list) -> None:
     return None
 
 def show_graph(G):
-    plt.figure(figsize=(20, 20))
+    plt.figure(figsize=(100, 100))
     pos = nx.spring_layout(G)
-    nx.draw(G, pos, with_labels=True, font_size=20, node_size=50, edge_color='gray', alpha=0.5, width=2, font_color='black')
+    nx.draw(G, pos, with_labels=True, node_size=50, font_size=10, font_color='black', font_weight='bold', edge_color='gray', node_color='skyblue', linewidths=0.5)
 
     plt.savefig('output/graph.png')
 
@@ -121,7 +121,7 @@ def consistency_check(lexicon, C):
 if __name__ == "__main__":
 
     # Example usage
-    corpus = pd.read_csv('data/sample3.csv')
+    corpus = pd.read_csv('data/sample3.csv').sample(60000)
     ocean = pd.read_csv('data/ocean.csv')
     liwc = pd.read_csv('data/liwc.csv')
 
@@ -142,8 +142,4 @@ if __name__ == "__main__":
     print(len(lexicon), len(invert_dict(lexicon)), len(G.edges), len(C))
     write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
     consistency_check(lexicon, C)
-    # print(llm_evaluate(sentences, categories)) # intensive computation
-
-    # print(evaluate_lexicon(invert_dict(lexicon), true_seeds)) # 0.0
-    # (0.782608695652174, 1.0, 0.9444444444444444, 0.9714285714285714) 
-
+    show_graph(G)
