@@ -52,14 +52,11 @@ def expand_seeds(seeds, model, Tc, sentiment_terms):
     seeds_in_vocab = vocab.intersection(seeds)
     sentiment_terms_in_vocab = vocab.intersection(sentiment_terms)
 
-    # Create a mapping from index to term
     index_to_term = list(seeds_in_vocab) + list(sentiment_terms_in_vocab)
-    term_to_index = {term: index for index, term in enumerate(index_to_term)}
+    # term_to_index = {term: index for index, term in enumerate(index_to_term)}
 
-    # Create a matrix of all vectors
     vectors = np.array([model[term] for term in index_to_term])
 
-    # Fit nearest neighbors model
     neighbors = NearestNeighbors(n_neighbors=len(vectors), metric='cosine')
     neighbors.fit(vectors)
     
@@ -134,8 +131,8 @@ def build_lexicon(labels):
             lexicon[category].add(word)
     return {key: list(value) for key, value in lexicon.items()}
 
-def construct(corpus, seeds, Tc):
-    processed_corpus, sentiment_terms = preprocess_corpus(corpus, 'review_text')
+def construct(corpus, seeds, Tc, text):
+    processed_corpus, sentiment_terms = preprocess_corpus(corpus, text)
     # model = learn_word_embeddings(processed_corpus)
     model = api.load("word2vec-google-news-300")
     C = expand_seeds(seeds, model, Tc, sentiment_terms)

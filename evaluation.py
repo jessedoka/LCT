@@ -22,7 +22,7 @@ import ast
 
 def liwc_comparison(lexicon, reviews, max_iter=10):
     # Load the LIWC dictionary
-    parse, category_names = liwc.load_token_parser('data/LIWC2007_English100131.dic')
+    parse, category_names = liwc.load_token_parser('data/LIWC2007_English100131.dic') #type: ignore
 
     # Tokenise the reviews
     tokenised_reviews = [nltk.word_tokenize(review) for review in reviews]
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     ocean_unique = {word: ocean[word] for word in ocean if word not in liwc} 
 
     Tc = 0.7  # Threshold for similarity
-    lexicon, G, C = construct(corpus, seeds, Tc)
+    lexicon, G, C = construct(corpus, seeds, Tc, 'review_text')
 
     print(f"Categories: {len(lexicon)}, Words: {len(invert_dict(lexicon))} Nodes: {len(G.nodes)}, Edges: {len(G.edges)}, Candidate words: {len(C)}")
     write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
