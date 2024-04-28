@@ -7,16 +7,13 @@ import networkx as nx
 import pandas as pd
 from collections import defaultdict
 
-
 import nltk
 from nltk.corpus import sentiwordnet as swn
-import liwc
 
-import json
 from tqdm import tqdm
 import numpy as np
 
-from preprocessing import preprocess_corpus, write_to_file, invert_dict
+from preprocessing import preprocess_corpus 
 from sklearn.neighbors import NearestNeighbors
 
 nltk.download('opinion_lexicon')
@@ -44,7 +41,7 @@ def expand_seeds(seeds, model, Tc, sentiment_terms):
     print("expanding seeds")
     similarities = defaultdict(dict)
 
-    # just get the words
+    # Just get seed words
     seeds = set(seeds.keys())
 
     # Pre-calculate intersections
@@ -76,12 +73,12 @@ def expand_seeds(seeds, model, Tc, sentiment_terms):
                 if term1 != term2:
                     similarities[term1][term2] = 1 - distance
 
-    # Sort by similarity
-    print("sorting by similarity")
+
     C = []
     for seed, terms in tqdm(similarities.items()):
         for term, similarity in terms.items():
             C.append((seed, term))
+
 
     return C
 
