@@ -1,15 +1,12 @@
 from numpy import invert
 import requests
 import json
-import random
 
 import matplotlib.pyplot as plt
 import networkx as nx
 
 from preprocessing import invert_dict, write_to_file
 from lexicon_construction import construct
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
 from tqdm import tqdm
 import pandas as pd
 
@@ -38,11 +35,9 @@ def liwc_comparison(lexicon, reviews, max_iter=10):
         intersection = test & categories
 
         accuracy = sum(intersection.values()) / sum(test.values()) if sum(test.values()) > 0 else 0
-        
-        accuracies.append(accuracy)
 
+        accuracies.append(accuracy)
         reviews = reviews['review_text'].sample(len(reviews) // 10)
-  
 
         for _ in range(max_iter):
             try:
@@ -100,8 +95,6 @@ def show_graph(G):
 
     plt.savefig('output/graph1.png')
 
-
-
 def consistency_check(lexicon, C):
     """
     Review if similar words have been grouped under consistent categories and if the classifications make sense logically. For instance, check if synonyms or related words consistently share categories.
@@ -121,7 +114,8 @@ def consistency_check(lexicon, C):
 if __name__ == "__main__":
 
     # Example usage
-    corpus = pd.read_pickle('data/sample3.pkl').sample(200000)
+    # corpus = pd.read_pickle('data/sample3.pkl').sample(200000)
+    corpus = pd.read_json('data/goodreads_reviews_dedup.json.zip')
     ocean = pd.read_csv('data/ocean.csv')
     liwc = pd.read_csv('data/liwc.csv')
 
