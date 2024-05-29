@@ -90,10 +90,6 @@ The Lexicon Construction Tool is designed to enhance natural language processing
 
 Contributions are welcome! Please fork the repository and submit pull requests. Ensure that your contributions comply with the project's coding standards and include relevant tests.
 
-## License
-
-This project is licensed under the MIT License.
-
 ## Acknowledgements
 
 - Supervisor: Dr. Huizhi Liang
