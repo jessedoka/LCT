@@ -86,6 +86,8 @@ The Lexicon Construction Tool is designed to enhance natural language processing
 - Enhance the integration with large language models (LLMs).
 - Conduct manual evaluation by linguistic experts.
 
+More detailed documentation [here](https://docs.google.com/document/d/e/2PACX-1vQzBFdETfqFX5FfdeammvbNXBtrqej5tIcqUoXuZWXRs5oT89Kq4W-OR16IOloKx2PzXq8YTrpYl8El/pub)
+
 ## Contributing
 
 Contributions are welcome! Please fork the repository and submit pull requests. Ensure that your contributions comply with the project's coding standards and include relevant tests.
