@@ -93,15 +93,15 @@ def show_graph(G):
     pos = nx.spring_layout(G)
     nx.draw(G, pos, with_labels=True, node_size=50, font_size=10, font_color='black', font_weight='bold', edge_color='gray', node_color='skyblue', linewidths=0.5)
 
-    plt.savefig('output/graph1.png')
+    plt.savefig('output/graph.png')
 
-def consistency_check(lexicon, C):
+def consistency_check(lexicon, G):
     """
     Review if similar words have been grouped under consistent categories and if the classifications make sense logically. For instance, check if synonyms or related words consistently share categories.
     """
 
     # Check if similar words have been grouped under consistent categories
-    for seed, term in C:
+    for seed, term in G.edges:
         if seed in lexicon and term in lexicon and seed != term:
             # similarity percentage between seed and term 
             similarity = len(set(lexicon[seed]) & set(lexicon[term])) / len(set(lexicon[seed]) | set(lexicon[term]))
@@ -114,8 +114,8 @@ def consistency_check(lexicon, C):
 if __name__ == "__main__":
 
     # Example usage
-    # corpus = pd.read_pickle('data/sample3.pkl').sample(200000)
-    corpus = pd.read_json('data/goodreads_reviews_dedup.json.zip')
+    corpus = pd.read_pickle('data/sample3.pkl').sample(1000)
+    # corpus = pd.read_json('data/goodreads_reviews_dedup.json.zip')
     ocean = pd.read_csv('data/ocean.csv')
     liwc = pd.read_csv('data/liwc.csv')
 
@@ -134,6 +134,5 @@ if __name__ == "__main__":
     lexicon, G, C = construct(corpus, seeds, Tc, 'review_text')
 
     print(f"Categories: {len(lexicon)}, Words: {len(invert_dict(lexicon))} Nodes: {len(G.nodes)}, Edges: {len(G.edges)}, Candidate words: {len(C)}")
-    write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
-    consistency_check(lexicon, C)
+    write_to_file('output/lexiconpresent.json', json.dumps(lexicon, indent=4))
     show_graph(G)

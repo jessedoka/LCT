@@ -13,9 +13,11 @@ from nltk.corpus import sentiwordnet as swn
 import gzip
 from tqdm import tqdm
 import numpy as np
+import matplotlib.pyplot as plt
 
 from preprocessing import preprocess_text, preprocess_corpus
 from sklearn.neighbors import NearestNeighbors
+from sklearn.decomposition import PCA
 
 nltk.download('opinion_lexicon')
 nltk.download('stopwords')
@@ -51,6 +53,22 @@ def learn_word_embeddings(gzip_file_path):
                      vector_size=100, window=5, min_count=1, workers=4)
     return model.wv, sentiment_terms
 
+def visualize_embeddings(model):
+    # Get the word vectors
+    word_vectors = model.wv.vectors
+
+    # Perform PCA
+    pca = PCA(n_components=2)
+    result = pca.fit_transform(word_vectors)
+
+    # Create a scatter plot of the projection
+    plt.scatter(result[:, 0], result[:, 1])
+    
+    words = list(model.wv.key_to_index)
+    for i, word in enumerate(words):
+        plt.annotate(word, xy=(result[i, 0], result[i, 1]))
+    plt.show()
+
 
 def expand_seeds(seeds, model, Tc, sentiment_terms):
     print("expanding seeds")
@@ -84,11 +102,7 @@ def expand_seeds(seeds, model, Tc, sentiment_terms):
                 term1 = index_to_term[i]
                 term2 = index_to_term[index]
                 
-                # Make sure the two terms are not the same
-                if term1 != term2:
-                    similarities[term1][term2] = 1 - distance
-
-
+                similarities[term1][term2] = 1 - distance
     C = []
     for seed, terms in tqdm(similarities.items()):
         for term, similarity in terms.items():
@@ -110,7 +124,7 @@ def multi_label_propagation(G, seeds, max_iterations=100):
     # Initialize labels for all nodes
     labels = {node: [] for node in G.nodes()}
     
-    # Assign seed labels
+    # Assign seeds with their labels
     for node, label in seeds.items():
         labels[node] = label
 
@@ -144,9 +158,10 @@ def build_lexicon(labels):
     return {key: list(value) for key, value in lexicon.items()}
 
 def construct(corpus, seeds, Tc, text):
-    # _, sentiment_terms = preprocess_corpus(corpus, text)
+    _, sentiment_terms = preprocess_corpus(corpus, text)
     model, sentiment_terms = learn_word_embeddings(corpus) 
-    # model = api.load("word2vec-google-news-300")
+    # visualize_embeddings(model)
+    model = api.load("word2vec-google-news-300")
     C = expand_seeds(seeds, model, Tc, sentiment_terms)
 
     G = build_semantic_graph(C, model)

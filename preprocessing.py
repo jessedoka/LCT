@@ -116,14 +116,6 @@ def invert_dict(d: dict[str, list[str]]) -> dict[str, list[str]]:
 
 if __name__ == "__main__":
 
-    # Load the dataset
-    # df = pd.read_csv('data/essays.csv')
-    # processed_corpus, sentiment_terms = preprocess_corpus(df, 'TEXT')
-
-    # # Write the processed corpus and sentiment terms to files
-    # write_to_file('output/processed_corpus.txt', str(processed_corpus))
-    # write_to_file('output/sentiment_terms.txt', str(sentiment_terms))
-
     with open('output/lexicon.json', 'r') as f:
         lexicon = json.load(f)
 
