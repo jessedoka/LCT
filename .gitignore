@@ -4,6 +4,7 @@ venv
 
 !output/lexicon.json
 data/*
+datasets/*
 texts/*
 output/*
 models/*
