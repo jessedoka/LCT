@@ -114,10 +114,10 @@ def consistency_check(lexicon, G):
 if __name__ == "__main__":
 
     # Example usage
-    corpus = pd.read_pickle('data/sample3.pkl').sample(1000)
+    # corpus = pd.read_pickle('datasets/goodreads_reviews_dedup.json.gz')
     # corpus = pd.read_json('data/goodreads_reviews_dedup.json.zip')
-    ocean = pd.read_csv('data/ocean.csv')
-    liwc = pd.read_csv('data/liwc.csv')
+    ocean = pd.read_csv('datasets/ocean.csv')
+    liwc = pd.read_csv('datasets/liwc.csv')
 
     # creating seeds... 
     ocean = {word: trait for trait in ocean.columns for word in ocean[trait].dropna().tolist()}
@@ -131,8 +131,8 @@ if __name__ == "__main__":
     ocean_unique = {word: ocean[word] for word in ocean if word not in liwc} 
 
     Tc = 0.7  # Threshold for similarity
-    lexicon, G, C = construct(corpus, seeds, Tc, 'review_text')
+    lexicon, G, C = construct('datasets/goodreads_reviews_dedup.json.gz', seeds, Tc)
 
     print(f"Categories: {len(lexicon)}, Words: {len(invert_dict(lexicon))} Nodes: {len(G.nodes)}, Edges: {len(G.edges)}, Candidate words: {len(C)}")
-    write_to_file('output/lexiconpresent.json', json.dumps(lexicon, indent=4))
+    write_to_file('output/lexicon.json', json.dumps(lexicon, indent=4))
     show_graph(G)

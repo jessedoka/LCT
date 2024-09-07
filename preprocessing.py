@@ -46,6 +46,14 @@ def extract_sentiment_terms(sentence):
     return sentiment_terms
 
 def preprocess_corpus(corpus: pd.DataFrame, text_column: str):
+    """Preprocess a corpus of text data assumed to be in a column of a pandas dataframe. 
+    
+    Keyword arguments:
+    corpus -- the pandas dataframe containing the corpus
+    text_column -- the name of the column containing the text data
+    return: processed_corpus, sentiment_terms
+    """
+    
     # Implement preprocessing steps here
 
     print("reading corpus...")
